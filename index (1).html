@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sensor &amp; Servo Lab - Koding Next</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bench:#dfe8e3; --panel:#f7faf8; --ink:#16282f; --muted:#52666d; --line:#c3d1ca;
+  --servo:#2f6fed; --red:#e5484d; --green:#2fa66a; --amber:#f2a21d;
+  font-family:'Nunito',system-ui,sans-serif; color:var(--ink);
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bench)}
+.app{display:flex;height:100%}
+#stage{flex:1;position:relative;min-width:0;touch-action:none;cursor:grab}
+#stage:active{cursor:grabbing}
+#stage canvas{display:block;width:100%;height:100%}
+.hint{position:absolute;left:16px;bottom:14px;font-size:14px;color:var(--muted);background:rgba(247,250,248,.85);padding:6px 10px;border-radius:8px;pointer-events:none}
+aside{width:380px;max-width:100%;background:var(--panel);border-left:2px solid var(--line);padding:20px;overflow-y:auto}
+h1{font-family:'Fredoka',sans-serif;font-weight:600;font-size:28px;line-height:1.1;margin:0 0 4px}
+.sub{margin:0 0 18px;color:var(--muted);font-size:15px}
+h2{font-family:'Fredoka',sans-serif;font-weight:500;font-size:19px;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+h2 i{width:12px;height:12px;border-radius:50%;display:inline-block}
+section{padding:14px 0 16px;border-top:2px solid var(--line)}
+label{display:flex;justify-content:space-between;font-weight:700;font-size:15px;margin:10px 0 4px}
+label output{font-variant-numeric:tabular-nums;color:var(--servo)}
+input[type=range]{width:100%;accent-color:var(--servo);height:28px}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+button{font:inherit;font-weight:700;font-size:15px;border:2px solid var(--ink);background:#fff;color:var(--ink);padding:8px 12px;border-radius:10px;cursor:pointer;min-height:40px}
+button:hover{background:#eef4f0}
+button[aria-pressed=true]{background:var(--ink);color:#fff}
+button:focus-visible,input:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+.read{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.read div{background:#fff;border:2px solid var(--line);border-radius:10px;padding:8px 10px}
+.read b{display:block;font-size:13px;color:var(--muted);font-weight:700}
+.read span{font-family:'Fredoka',sans-serif;font-size:22px}
+#serial{background:#13232a;color:#b9f3d0;font:13px/1.5 ui-monospace,Menlo,Consolas,monospace;border-radius:10px;padding:10px 12px;height:150px;overflow:hidden;white-space:pre-wrap}
+.note{font-size:14px;color:var(--muted);margin:8px 0 0}
+@media (max-width:820px){
+  .app{flex-direction:column}
+  #stage{flex:none;height:46vh}
+  aside{width:100%;border-left:0;border-top:2px solid var(--line);flex:1}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="stage"><div class="hint">Drag to turn the bench. Scroll or pinch to zoom.</div></div>
+  <aside>
+    <h1>Sensor &amp; Servo Lab</h1>
+    <p class="sub">Junior Koders Future Engineers, Lessons 4 and 6</p>
+
+    <section>
+      <h2><i style="background:var(--amber)"></i>Infrared sensor (TCRT5000)</h2>
+      <label for="light">Surface under the sensor <output id="lightOut">White</output></label>
+      <input id="light" type="range" min="0" max="100" value="100">
+      <div class="row">
+        <button id="bWhite">White</button><button id="bGrey">Grey</button><button id="bBlack">Black</button>
+      </div>
+      <label for="thr">Threshold in code <output id="thrOut">500</output></label>
+      <input id="thr" type="range" min="0" max="1023" value="500">
+      <div class="read">
+        <div><b>analogRead</b><span id="rA">0</span></div>
+        <div><b>digitalRead</b><span id="rD">0</span></div>
+        <div><b>LED</b><span id="rL">Green</span></div>
+        <div><b>Buzzer</b><span id="rB">Off</span></div>
+      </div>
+      <div class="row"><button id="snd" aria-pressed="false">Sound off</button></div>
+      <p class="note">Dark surfaces reflect little light, so the analog value goes up and the red LED turns on. A light surface gives digital 0, which turns the buzzer on.</p>
+    </section>
+
+    <section>
+      <h2><i style="background:var(--servo)"></i>Servo motor</h2>
+      <label for="ang">Potentiometer angle <output id="angOut">0&deg;</output></label>
+      <input id="ang" type="range" min="0" max="180" value="0">
+      <div class="row">
+        <button id="bSweep" aria-pressed="false">Sweep</button>
+        <button id="bPress">Press button (+30&deg;)</button>
+        <button id="bReset">Reset to 0&deg;</button>
+      </div>
+      <p class="note">The button adds 30 degrees each press. Past 180 degrees the angle resets to 0.</p>
+    </section>
+
+    <section>
+      <h2><i style="background:var(--green)"></i>Combined challenge</h2>
+      <div class="row"><button id="bLink" aria-pressed="false">Sensor drives servo</button></div>
+      <p class="note">When on, a light surface (digital 0) turns the servo to 90&deg;, and a dark surface sends it back to 0&deg;.</p>
+    </section>
+
+    <section>
+      <h2>Serial monitor</h2>
+      <div id="serial" aria-live="off"></div>
+    </section>
+  </aside>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+  var $ = function(id){return document.getElementById(id)};
+  var stage = $('stage');
+
+  /* ---------- scene ---------- */
+  var scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xdfe8e3);
+  var camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
+  var renderer = new THREE.WebGLRenderer({antialias:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  stage.insertBefore(renderer.domElement, stage.firstChild);
+
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x9fb3aa, 0.85));
+  var sun = new THREE.DirectionalLight(0xffffff, 0.8);
+  sun.position.set(5, 10, 6);
+  scene.add(sun);
+
+  function mat(c, o){ return new THREE.MeshStandardMaterial(Object.assign({color:c, roughness:0.6, metalness:0.05}, o||{})); }
+  function add(geo, m, x, y, z, parent){
+    var mesh = new THREE.Mesh(geo, m);
+    mesh.position.set(x, y, z);
+    (parent || scene).add(mesh);
+    return mesh;
+  }
+
+  // bench
+  add(new THREE.BoxGeometry(13, 0.4, 7.5), mat(0xc4d2cb), 0.5, -0.2, 0);
+  add(new THREE.BoxGeometry(13.2, 0.1, 7.7), mat(0x16282f), 0.5, -0.45, 0);
+
+  // surface puck (colour changes)
+  var puckMat = mat(0xffffff);
+  var puck = add(new THREE.CylinderGeometry(1.5, 1.5, 0.2, 40), puckMat, -3, 0.1, 0);
+
+  // IR sensor module
+  var sensor = new THREE.Group();
+  sensor.position.set(-3, 2.5, 0);
+  scene.add(sensor);
+  add(new THREE.BoxGeometry(2, 0.12, 2.6), mat(0x1c6b4f), 0, 0, 0, sensor);
+  add(new THREE.CylinderGeometry(0.2, 0.2, 0.35, 20), mat(0xe8f4ff, {transparent:true, opacity:0.8}), -0.45, -0.22, 0.2, sensor);
+  add(new THREE.CylinderGeometry(0.2, 0.2, 0.35, 20), mat(0x20262b), 0.45, -0.22, 0.2, sensor);
+  add(new THREE.BoxGeometry(0.5, 0.2, 0.5), mat(0x20262b), 0, 0.15, -0.8, sensor);
+  add(new THREE.CylinderGeometry(0.06, 0.06, 2.4, 8), mat(0x8c9a94), -0.8, -1.2, -1.1, sensor);
+  add(new THREE.CylinderGeometry(0.06, 0.06, 2.4, 8), mat(0x8c9a94), 0.8, -1.2, -1.1, sensor);
+
+  // emitted light cone
+  var coneMat = new THREE.MeshBasicMaterial({color:0xf2a21d, transparent:true, opacity:0.3, side:THREE.DoubleSide, depthWrite:false});
+  var cone = add(new THREE.ConeGeometry(1.3, 2.1, 32, 1, true), coneMat, -3, 1.25, 0.2);
+
+  // LEDs and buzzer
+  var redMat = mat(0x7a2528, {emissive:0x000000});
+  var greenMat = mat(0x1d5a3b, {emissive:0x000000});
+  add(new THREE.SphereGeometry(0.28, 24, 16), redMat, -4.2, 0.35, 2.5);
+  add(new THREE.SphereGeometry(0.28, 24, 16), greenMat, -3.4, 0.35, 2.5);
+  var buzMat = mat(0x20262b, {emissive:0x000000});
+  var buzzer = add(new THREE.CylinderGeometry(0.42, 0.42, 0.35, 28), buzMat, -2.4, 0.2, 2.5);
+
+  // servo
+  add(new THREE.BoxGeometry(2.8, 1.5, 1.6), mat(0x2f6fed), 4, 0.75, 0);
+  add(new THREE.BoxGeometry(0.5, 0.2, 1.6), mat(0x2f6fed), 2.3, 1.1, 0);
+  add(new THREE.BoxGeometry(0.5, 0.2, 1.6), mat(0x2f6fed), 5.7, 1.1, 0);
+  add(new THREE.CylinderGeometry(0.28, 0.28, 0.3, 24), mat(0xf4f4f4), 4.6, 1.65, 0);
+  var horn = new THREE.Group();
+  horn.position.set(4.6, 1.9, 0);
+  scene.add(horn);
+  add(new THREE.BoxGeometry(2.4, 0.14, 0.38), mat(0xf4f4f4), 1.0, 0, 0, horn);
+  add(new THREE.CylinderGeometry(0.22, 0.22, 0.14, 20), mat(0xe5484d), 0, 0.02, 0, horn);
+  add(new THREE.CylinderGeometry(0.14, 0.14, 0.2, 14), mat(0xe5484d), 2.0, 0, 0, horn);
+
+  // protractor arc with ticks on the bench
+  var pts = [];
+  for(var a = 0; a <= 180; a += 3){ var r = a * Math.PI / 180; pts.push(new THREE.Vector3(4.6 + Math.cos(r)*3, 0.03, -Math.sin(r)*3)); }
+  scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({color:0x16282f})));
+  [0,30,60,90,120,150,180].forEach(function(a){
+    var r = a * Math.PI / 180, c = Math.cos(r), s = -Math.sin(r);
+    var p = [new THREE.Vector3(4.6 + c*2.8, 0.03, s*2.8), new THREE.Vector3(4.6 + c*3.25, 0.03, s*3.25)];
+    scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(p), new THREE.LineBasicMaterial({color:0x16282f})));
+  });
+
+  /* ---------- orbit (drag + zoom) ---------- */
+  var orbit = {theta:0.18, phi:1.05, radius:15}, target = new THREE.Vector3(0.8, 0.8, 0.4);
+  function placeCamera(){
+    camera.position.set(
+      target.x + orbit.radius * Math.sin(orbit.phi) * Math.sin(orbit.theta),
+      target.y + orbit.radius * Math.cos(orbit.phi),
+      target.z + orbit.radius * Math.sin(orbit.phi) * Math.cos(orbit.theta));
+    camera.lookAt(target);
+  }
+  var pointers = {}, pinch = 0;
+  stage.addEventListener('pointerdown', function(e){ stage.setPointerCapture(e.pointerId); pointers[e.pointerId] = {x:e.clientX, y:e.clientY}; });
+  stage.addEventListener('pointerup', function(e){ delete pointers[e.pointerId]; pinch = 0; });
+  stage.addEventListener('pointercancel', function(e){ delete pointers[e.pointerId]; pinch = 0; });
+  stage.addEventListener('pointermove', function(e){
+    var p = pointers[e.pointerId]; if(!p) return;
+    var ids = Object.keys(pointers);
+    if(ids.length === 2){
+      var o = pointers[ids[0] == e.pointerId ? ids[1] : ids[0]];
+      var d = Math.hypot(e.clientX - o.x, e.clientY - o.y);
+      if(pinch) orbit.radius = Math.min(26, Math.max(7, orbit.radius * pinch / d));
+      pinch = d;
+    } else {
+      orbit.theta -= (e.clientX - p.x) * 0.006;
+      orbit.phi = Math.min(1.45, Math.max(0.35, orbit.phi - (e.clientY - p.y) * 0.006));
+    }
+    p.x = e.clientX; p.y = e.clientY;
+  });
+  stage.addEventListener('wheel', function(e){ e.preventDefault(); orbit.radius = Math.min(26, Math.max(7, orbit.radius * (1 + e.deltaY * 0.001))); }, {passive:false});
+
+  function resize(){
+    var w = stage.clientWidth, h = stage.clientHeight;
+    renderer.setSize(w, h);
+    camera.aspect = w / h;
+    camera.fov = w / h < 1 ? 60 : 42;
+    camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', resize);
+
+  /* ---------- state ---------- */
+  var S = {light:100, thr:500, angle:0, target:0, sweep:false, link:false, sound:false};
+  var analog = 0, digital = 0, buzzerOn = false, redOn = false;
+  var serial = [];
+
+  function log(line){ serial.push(line); if(serial.length > 8) serial.shift(); $('serial').textContent = serial.join('\n'); }
+  function lightName(v){ return v > 80 ? 'White' : v > 35 ? 'Grey' : 'Black'; }
+
+  function readSensor(){
+    // darker surface reflects less IR, so the analog value rises
+    analog = Math.round(30 + (1 - S.light / 100) * 970);
+    digital = analog > S.thr ? 1 : 0;
+    redOn = analog > S.thr;
+    buzzerOn = digital === 0;
+    if(S.link) S.target = digital === 0 ? 90 : 0;
+
+    var c = new THREE.Color().setScalar(0.06 + 0.94 * S.light / 100);
+    puckMat.color.copy(c);
+    coneMat.opacity = 0.08 + 0.3 * (S.light / 100);
+    redMat.color.set(redOn ? 0xe5484d : 0x7a2528);   redMat.emissive.set(redOn ? 0xe5484d : 0x000000);   redMat.emissiveIntensity = 0.9;
+    greenMat.color.set(redOn ? 0x1d5a3b : 0x2fa66a); greenMat.emissive.set(redOn ? 0x000000 : 0x2fa66a); greenMat.emissiveIntensity = 0.9;
+    buzMat.emissive.set(buzzerOn ? 0xf2a21d : 0x000000); buzMat.emissiveIntensity = 0.6;
+
+    $('lightOut').textContent = lightName(S.light);
+    $('thrOut').textContent = S.thr;
+    $('rA').textContent = analog;
+    $('rD').textContent = digital;
+    $('rL').textContent = redOn ? 'Red' : 'Green';
+    $('rB').textContent = buzzerOn ? 'On' : 'Off';
+  }
+
+  function setTarget(a){ S.target = Math.max(0, Math.min(180, a)); $('ang').value = S.target; }
+
+  /* ---------- controls ---------- */
+  $('light').addEventListener('input', function(e){ S.light = +e.target.value; readSensor(); });
+  $('thr').addEventListener('input', function(e){ S.thr = +e.target.value; readSensor(); });
+  [['bWhite',100],['bGrey',50],['bBlack',0]].forEach(function(p){
+    $(p[0]).addEventListener('click', function(){ S.light = p[1]; $('light').value = p[1]; readSensor(); });
+  });
+  $('ang').addEventListener('input', function(e){ S.sweep = false; $('bSweep').setAttribute('aria-pressed','false'); S.link = false; $('bLink').setAttribute('aria-pressed','false'); S.target = +e.target.value; });
+  $('bSweep').addEventListener('click', function(e){
+    S.sweep = !S.sweep; e.target.setAttribute('aria-pressed', S.sweep);
+    if(S.sweep){ S.link = false; $('bLink').setAttribute('aria-pressed','false'); }
+  });
+  $('bPress').addEventListener('click', function(){
+    S.sweep = false; $('bSweep').setAttribute('aria-pressed','false');
+    S.link = false; $('bLink').setAttribute('aria-pressed','false');
+    log('pressed');
+    var next = S.target + 30;
+    setTarget(next > 180 ? 0 : next);
+  });
+  $('bReset').addEventListener('click', function(){ S.sweep = false; $('bSweep').setAttribute('aria-pressed','false'); setTarget(0); });
+  $('bLink').addEventListener('click', function(e){
+    S.link = !S.link; e.target.setAttribute('aria-pressed', S.link);
+    if(S.link){ S.sweep = false; $('bSweep').setAttribute('aria-pressed','false'); }
+    readSensor();
+  });
+
+  // sound (needs a click to start)
+  var ac, osc, gain;
+  $('snd').addEventListener('click', function(e){
+    S.sound = !S.sound; e.target.setAttribute('aria-pressed', S.sound);
+    e.target.textContent = S.sound ? 'Sound on' : 'Sound off';
+    if(S.sound && !ac){
+      try{
+        ac = new (window.AudioContext || window.webkitAudioContext)();
+        osc = ac.createOscillator(); gain = ac.createGain();
+        osc.type = 'square'; osc.frequency.value = 880; gain.gain.value = 0;
+        osc.connect(gain); gain.connect(ac.destination); osc.start();
+      }catch(err){ S.sound = false; e.target.setAttribute('aria-pressed','false'); e.target.textContent = 'Sound unavailable'; }
+    }
+    if(ac && ac.state === 'suspended') ac.resume();
+  });
+
+  // serial monitor and sweep ticks every 500 ms, like delay(500) in the lesson code
+  setInterval(function(){
+    log('Analog Value: ' + analog);
+    log('Digital Value: ' + digital);
+    if(S.sweep){
+      var next = S.target + 30;
+      setTarget(next > 180 ? 0 : next);
+    }
+  }, 500);
+  var lastBuzz = null;
+
+  /* ---------- loop ---------- */
+  var clock = new THREE.Clock();
+  function frame(){
+    var dt = Math.min(clock.getDelta(), 0.05);
+    var diff = S.target - S.angle, step = 240 * dt;           // servo speed, degrees per second
+    S.angle += Math.abs(diff) < step ? diff : Math.sign(diff) * step;
+    horn.rotation.y = S.angle * Math.PI / 180;
+    $('angOut').innerHTML = Math.round(S.angle) + '&deg;';
+
+    if(buzzerOn) buzzer.position.y = 0.2 + Math.abs(Math.sin(performance.now() * 0.03)) * 0.05; else buzzer.position.y = 0.2;
+    if(gain) gain.gain.setTargetAtTime(S.sound && buzzerOn ? 0.04 : 0, ac.currentTime, 0.02);
+    if(lastBuzz !== buzzerOn){ if(lastBuzz !== null) log(buzzerOn ? 'Buzzer on' : 'Buzzer off'); lastBuzz = buzzerOn; }
+
+    placeCamera();
+    renderer.render(scene, camera);
+    requestAnimationFrame(frame);
+  }
+
+  resize();
+  readSensor();
+  log('Ready. Change the surface or move the servo.');
+  frame();
+})();
+</script>
+</body>
+</html>
